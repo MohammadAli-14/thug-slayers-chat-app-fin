@@ -62,7 +62,7 @@ export const signup = async (req, res) => {
 };
 export const login = async (req, res) => {
   const { email, password } = req.body;
-
+ //Adding refactored login function
   if (!email || !password) {
     return res.status(400).json({ message: "Email and password are required" });
   }
