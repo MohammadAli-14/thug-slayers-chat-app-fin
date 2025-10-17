@@ -16,7 +16,7 @@ const PORT=ENV.PORT || 3000;
 app.use(express.json()); //middleware to parse json data req.body
 app.use(cookieParser()); //middleware to parse cookies
 app.use("/api/auth",authRoutes);
-app.use('/api/messages',messageRoutes);
+app.use("/api/messages",messageRoutes);
 
 
 //make ready for deployment 
