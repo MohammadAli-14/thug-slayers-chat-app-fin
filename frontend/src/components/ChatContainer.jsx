@@ -5,6 +5,7 @@ import ChatHeader from "./ChatHeader";
 import NoChatHistoryPlaceholder from "./NoChatHistoryPlaceholder";
 import MessageInput from "./MessageInput";
 import MessagesLoadingSkeleton from "./MessagesLoadingSkeleton";
+import { ArrowLeftIcon } from "lucide-react"; // Add this import
 
 function ChatContainer() {
   const {
@@ -14,6 +15,7 @@ function ChatContainer() {
     isMessagesLoading,
     subscribeToMessages,
     unsubscribeFromMessages,
+    setSelectedUser, // Add this
   } = useChatStore();
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
@@ -34,10 +36,21 @@ function ChatContainer() {
 
   return (
     <>
+      {/* Mobile Back Button */}
+      <div className="md:hidden flex items-center p-4 border-b border-slate-700/50">
+        <button 
+          onClick={() => setSelectedUser(null)}
+          className="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition-colors"
+        >
+          <ArrowLeftIcon className="size-5" />
+          Back
+        </button>
+      </div>
+      
       <ChatHeader />
-      <div className="flex-1 px-6 overflow-y-auto py-8">
+      <div className="flex-1 px-4 md:px-6 overflow-y-auto py-4 md:py-8">
         {messages.length > 0 && !isMessagesLoading ? (
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className="max-w-3xl mx-auto space-y-4 md:space-y-6">
             {messages.map((msg) => (
               <div
                 key={msg._id}
@@ -51,9 +64,13 @@ function ChatContainer() {
                   }`}
                 >
                   {msg.image && (
-                    <img src={msg.image} alt="Shared" className="rounded-lg h-48 object-cover" />
+                    <img 
+                      src={msg.image} 
+                      alt="Shared" 
+                      className="rounded-lg max-w-full h-auto max-h-48 object-cover" 
+                    />
                   )}
-                  {msg.text && <p className="mt-2">{msg.text}</p>}
+                  {msg.text && <p className="mt-2 break-words">{msg.text}</p>}
                   <p className="text-xs mt-1 opacity-75 flex items-center gap-1">
                     {new Date(msg.createdAt).toLocaleTimeString(undefined, {
                       hour: "2-digit",
@@ -63,7 +80,6 @@ function ChatContainer() {
                 </div>
               </div>
             ))}
-            {/* 👇 scroll target */}
             <div ref={messageEndRef} />
           </div>
         ) : isMessagesLoading ? (
