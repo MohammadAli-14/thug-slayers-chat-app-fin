@@ -11,11 +11,11 @@ function ChatPage() {
   const { activeTab, selectedUser } = useChatStore();
 
   return (
-    <div className="w-full h-screen bg-slate-900">
+    <div className="w-full h-screen bg-slate-900 safe-area">
       <div className="relative w-full h-full max-w-6xl mx-auto">
         <BorderAnimatedContainer>
           <div className="w-full h-full flex flex-col md:flex-row">
-            {/* LEFT SIDE - Hidden on mobile when chat is open */}
+            {/* LEFT SIDE - Contacts/Chats List */}
             <div className={`
               ${selectedUser ? 'hidden md:flex' : 'flex'}
               w-full md:w-80 flex-col
@@ -29,7 +29,7 @@ function ChatPage() {
               </div>
             </div>
 
-            {/* RIGHT SIDE - Full screen on mobile when chat is open */}
+            {/* RIGHT SIDE - Chat Area */}
             <div className={`
               ${selectedUser ? 'flex' : 'hidden md:flex'}
               flex-1 flex-col bg-slate-900/50 backdrop-blur-sm
