@@ -60,6 +60,13 @@ function LoginPage() {
                         placeholder="Enter your password"
                       />
                     </div>
+
+                    {/* ADD THIS FORGOT PASSWORD LINK */}
+                    <div className="text-right mt-2">
+                      <Link to="/forgot-password" className="text-cyan-400 hover:text-cyan-300 text-sm">
+                        Forgot your password?
+                      </Link>
+                    </div>
                   </div>
 
                   {/* SUBMIT BUTTON */}
@@ -105,4 +112,5 @@ function LoginPage() {
     </div>
   );
 }
+
 export default LoginPage;
