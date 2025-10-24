@@ -203,7 +203,7 @@ function ForgotPasswordPage() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="input"
-                            placeholder="johndoe@gmail.com"
+                            placeholder="rajaali8383679@gmail.com"
                             required
                           />
                         </div>
