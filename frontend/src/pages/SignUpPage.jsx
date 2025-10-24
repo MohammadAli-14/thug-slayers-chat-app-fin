@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
+import { useNavigate } from "react-router"; // ADD THIS IMPORT
 import BorderAnimatedContainer from "../components/BorderAnimatedContainer";
 import { MessageCircleIcon, LockIcon, MailIcon, UserIcon, LoaderIcon } from "lucide-react";
 import { Link } from "react-router";
@@ -7,10 +8,19 @@ import { Link } from "react-router";
 function SignUpPage() {
   const [formData, setFormData] = useState({ fullName: "", email: "", password: "" });
   const { signup, isSigningUp } = useAuthStore();
+  const navigate = useNavigate(); // ADD NAVIGATE HOOK
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    signup(formData);
+    try {
+      const result = await signup(formData);
+      if (result.success) {
+        // Navigate to OTP verification page with email
+        navigate("/verify-otp", { state: { email: formData.email } });
+      }
+    } catch (error) {
+      // Error is handled in the store
+    }
   };
 
   return (
@@ -18,7 +28,7 @@ function SignUpPage() {
       <div className="relative w-full max-w-6xl md:h-[800px] h-[650px]">
         <BorderAnimatedContainer>
           <div className="w-full flex flex-col md:flex-row">
-            {/* FORM CLOUMN - LEFT SIDE */}
+            {/* FORM COLUMN - LEFT SIDE */}
             <div className="md:w-1/2 p-8 flex items-center justify-center md:border-r border-slate-600/30">
               <div className="w-full max-w-md">
                 {/* HEADING TEXT */}
@@ -42,6 +52,7 @@ function SignUpPage() {
                         onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                         className="input"
                         placeholder="John Doe"
+                        required
                       />
                     </div>
                   </div>
@@ -58,6 +69,7 @@ function SignUpPage() {
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         className="input"
                         placeholder="johndoe@gmail.com"
+                        required
                       />
                     </div>
                   </div>
@@ -74,6 +86,8 @@ function SignUpPage() {
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         className="input"
                         placeholder="Enter your password"
+                        required
+                        minLength="6"
                       />
                     </div>
                   </div>
@@ -121,4 +135,5 @@ function SignUpPage() {
     </div>
   );
 }
+
 export default SignUpPage;
