@@ -65,7 +65,7 @@ function LandingPage() {
   ];
 
   const stats = [
-    { number: "50K+", label: "ACTIVE WARRIORS", icon: <SwordIcon className="w-4 h-4" /> },
+    { number: "50+", label: "ACTIVE WARRIORS", icon: <SwordIcon className="w-4 h-4" /> },
     { number: "100%", label: "SECURE", icon: <LockIcon className="w-4 h-4" /> },
     { number: "24/7", label: "OPERATIONAL", icon: <TargetIcon className="w-4 h-4" /> },
     { number: "∞", label: "FREE", icon: <TrophyIcon className="w-4 h-4" /> }
@@ -737,7 +737,7 @@ function LandingPage() {
               >
                 <StarIcon className="w-4 h-4" />
               </motion.div>
-              <span className="text-slate-500 text-sm ml-2">Rated by 50K+ Warriors</span>
+              <span className="text-slate-500 text-sm ml-2">Rated by 50+ Warriors</span>
             </motion.div>
           </div>
         </motion.footer>

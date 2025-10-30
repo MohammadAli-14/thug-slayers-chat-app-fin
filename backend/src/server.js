@@ -7,6 +7,7 @@ import messageRoutes from "./routes/message.routes.js";
 import { connectDB } from "./lib/db.js";
 import { ENV } from "./lib/env.js";
 import cors from "cors";
+import job from "./lib/cron.js";
 import { app, server } from "./lib/socket.js";
 import { removeUnverifiedAccounts } from "./automation/removeUnverifiedAccounts.js";
 import groupRoutes from "./routes/group.routes.js";
@@ -16,6 +17,8 @@ import readReceiptRoutes from "./routes/readReceipt.routes.js"; // ADD THIS
 
 const __dirname = path.resolve();
 const PORT = ENV.PORT || 3000;
+
+job.start(); // Start the cron job
 
 app.use(express.json({ limit: "5mb" })); // middleware to parse json data req.body
 app.use(cors({ origin: ENV.CLIENT_URL, credentials: true })); // enable CORS for frontend domain

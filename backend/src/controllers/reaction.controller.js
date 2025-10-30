@@ -333,3 +333,99 @@ export const removeReactionByMessageAndEmoji = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+// Bulk reactions endpoint
+export const getBulkReactions = async (req, res) => {
+  try {
+    const { messageIds, messageType } = req.body;
+    
+    if (!messageIds || !Array.isArray(messageIds) || !messageType) {
+      return res.status(400).json({ 
+        message: "Message IDs array and message type are required" 
+      });
+    }
+
+    // Filter out any invalid message IDs and optimistic IDs
+    const validMessageIds = messageIds.filter(id => 
+      id && typeof id === 'string' && !id.startsWith('temp-') && id.length > 10
+    );
+
+    console.log(`Fetching bulk reactions for ${validMessageIds.length} messages`);
+
+    if (validMessageIds.length === 0) {
+      return res.status(200).json({ 
+        success: true, 
+        reactions: {} 
+      });
+    }
+
+    const reactions = {};
+    
+    // Build query based on message type
+    let query;
+    if (messageType === "private") {
+      query = { 
+        messageId: { $in: validMessageIds }, 
+        messageType: "private" 
+      };
+    } else if (messageType === "group") {
+      query = { 
+        groupMessageId: { $in: validMessageIds }, 
+        messageType: "group" 
+      };
+    } else {
+      return res.status(400).json({ message: "Invalid message type" });
+    }
+
+    // Fetch all reactions for the given message IDs
+    const allReactions = await MessageReaction.find(query)
+      .populate("userId", "fullName profilePic");
+
+    console.log(`Found ${allReactions.length} total reactions`);
+
+    // Group reactions by message ID and then by emoji
+    allReactions.forEach(reaction => {
+      const messageId = messageType === "private" 
+        ? reaction.messageId.toString() 
+        : reaction.groupMessageId.toString();
+
+      if (!reactions[messageId]) {
+        reactions[messageId] = {};
+      }
+
+      if (!reactions[messageId][reaction.emoji]) {
+        reactions[messageId][reaction.emoji] = [];
+      }
+
+      // Check if user already exists to avoid duplicates
+      const userExists = reactions[messageId][reaction.emoji].some(
+        user => user._id.toString() === reaction.userId._id.toString()
+      );
+
+      if (!userExists) {
+        reactions[messageId][reaction.emoji].push({
+          _id: reaction.userId._id,
+          fullName: reaction.userId.fullName,
+          profilePic: reaction.userId.profilePic
+        });
+      }
+    });
+
+    // Ensure all requested message IDs are in the response, even if empty
+    validMessageIds.forEach(messageId => {
+      if (!reactions[messageId]) {
+        reactions[messageId] = {};
+      }
+    });
+    
+    console.log(`Returning reactions for ${Object.keys(reactions).length} messages`);
+    
+    res.status(200).json({ 
+      success: true, 
+      reactions 
+    });
+  } catch (error) {
+    console.log("Error in getBulkReactions controller:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

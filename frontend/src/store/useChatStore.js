@@ -4,6 +4,40 @@ import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
 import { useAuthStore } from "./useAuthStore";
 
+// Optimized debounce utility
+const debounce = (func, wait) => {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+};
+
+// Batch reaction updates
+const createBatchProcessor = () => {
+  let batch = new Map();
+  let timeoutId = null;
+  
+  return {
+    add: (messageId, updateFn) => {
+      batch.set(messageId, updateFn);
+      if (!timeoutId) {
+        timeoutId = setTimeout(() => {
+          batch.forEach(updateFn => updateFn());
+          batch.clear();
+          timeoutId = null;
+        }, 50); // Batch updates every 50ms
+      }
+    }
+  };
+};
+
+const reactionBatchProcessor = createBatchProcessor();
+
 export const useChatStore = create((set, get) => ({
   // Users & chats
   allContacts: [],
@@ -30,9 +64,23 @@ export const useChatStore = create((set, get) => ({
 
   // Socket private handlers
   _private_messageHandler: null,
-  _private_reactionAddedHandler: null,
-  _private_reactionRemovedHandler: null,
   _private_groupHandlers: null,
+
+  // Debounced message handlers
+  _debouncedPrivateMessageHandler: null,
+  _debouncedGroupMessageHandler: null,
+
+  // Global reaction handlers
+  _globalReactionHandler: null,
+  _globalReactionRemovedHandler: null,
+
+  // Optimized reaction batch
+  _reactionBatch: new Map(),
+  
+  // Batch reaction updates to prevent excessive re-renders
+  batchReactionUpdate: (messageId, updateFn) => {
+    reactionBatchProcessor.add(messageId, updateFn);
+  },
 
   // --- Contacts & 1:1 Chats ---
   getAllContacts: async () => {
@@ -59,29 +107,46 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  getMessagesByUserId: async (userId) => {
+  // Enhanced getMessagesByUserId with pagination and reactions
+  getMessagesByUserId: async (userId, page = 1, limit = 50) => {
     set({ isMessagesLoading: true });
     try {
-      const res = await axiosInstance.get(`/messages/${userId}`);
+      const res = await axiosInstance.get(`/messages/${userId}?page=${page}&limit=${limit}`);
       
-      // Fetch reactions for each message
-      const messagesWithReactions = await Promise.all(
-        res.data.map(async (message) => {
-          try {
-            const reactionsRes = await axiosInstance.get(`/reactions/${message._id}/private`);
-            return {
-              ...message,
-              reactions: reactionsRes.data.reactions || {}
-            };
-          } catch (error) {
-            // If reactions fail to load, just return the message without reactions
-            console.error("Failed to load reactions for message:", message._id, error);
-            return { ...message, reactions: {} };
-          }
-        })
-      );
+      let messages = res.data;
       
-      set({ messages: messagesWithReactions });
+      // Fetch reactions for all messages in bulk
+      const messageIds = messages
+        .filter(msg => !msg._id.startsWith('temp-'))
+        .map(msg => msg._id);
+      
+      if (messageIds.length > 0) {
+        try {
+          const reactionsRes = await axiosInstance.post('/reactions/bulk', {
+            messageIds,
+            messageType: 'private'
+          });
+          
+          // Attach reactions to messages
+          messages = messages.map(msg => ({
+            ...msg,
+            reactions: reactionsRes.data.reactions[msg._id] || {}
+          }));
+        } catch (reactionError) {
+          console.error('Failed to load reactions:', reactionError);
+          // Continue without reactions if fetch fails
+          messages = messages.map(msg => ({
+            ...msg,
+            reactions: msg.reactions || {}
+          }));
+        }
+      }
+      
+      if (page === 1) {
+        set({ messages });
+      } else {
+        set(state => ({ messages: [...messages, ...state.messages] }));
+      }
     } catch (error) {
       toast.error(error?.response?.data?.message || "Something went wrong");
     } finally {
@@ -142,7 +207,11 @@ export const useChatStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
-    const messageHandler = (newMessage) => {
+    // Subscribe to global reactions once
+    get().subscribeToReactions();
+
+    // Create debounced message handler
+    const debouncedMessageHandler = debounce((newMessage) => {
       const isMessageFromSelectedUser = newMessage.senderId === selectedUser._id;
       if (!isMessageFromSelectedUser) return;
 
@@ -157,94 +226,29 @@ export const useChatStore = create((set, get) => ({
           notificationSound.play().catch((e) => console.log("Audio play failed:", e));
         }
       }
-    };
+    }, 50); // 50ms debounce
 
-    // UPDATED REACTION HANDLERS FOR PRIVATE CHATS
-    const reactionAddedHandler = (data) => {
-      console.log("Private chat reaction added:", data);
-      
-      // Only process if it's a private message reaction
-      if (data.messageType !== "private") return;
-      
-      const currentMessages = get().messages;
-      
-      // Update the specific message with new reactions
-      const updatedMessages = currentMessages.map(msg => {
-        if (msg._id === data.messageId) {
-          // Create or update reactions for this message
-          const updatedReactions = { ...msg.reactions };
-          if (!updatedReactions[data.reaction.emoji]) {
-            updatedReactions[data.reaction.emoji] = [];
-          }
-          
-          // Check if user already reacted to avoid duplicates
-          const userExists = updatedReactions[data.reaction.emoji].some(
-            user => user._id === data.reaction.userId._id
-          );
-          
-          if (!userExists) {
-            updatedReactions[data.reaction.emoji].push(data.reaction.userId);
-          }
-          
-          return { ...msg, reactions: updatedReactions };
-        }
-        return msg;
-      });
-      
-      set({ messages: updatedMessages });
-    };
-
-    const reactionRemovedHandler = (data) => {
-      console.log("Private chat reaction removed:", data);
-      
-      // Only process if it's a private message reaction
-      if (data.messageType !== "private") return;
-      
-      const currentMessages = get().messages;
-      
-      // Update the specific message by removing the reaction
-      const updatedMessages = currentMessages.map(msg => {
-        if (msg._id === data.messageId) {
-          const updatedReactions = { ...msg.reactions };
-          
-          if (updatedReactions[data.emoji]) {
-            updatedReactions[data.emoji] = updatedReactions[data.emoji].filter(
-              user => user._id !== data.userId
-            );
-            
-            // Remove emoji if no users left
-            if (updatedReactions[data.emoji].length === 0) {
-              delete updatedReactions[data.emoji];
-            }
-          }
-          
-          return { ...msg, reactions: updatedReactions };
-        }
-        return msg;
-      });
-      
-      set({ messages: updatedMessages });
+    // Create the actual socket handler that uses the debounced function
+    const messageHandler = (newMessage) => {
+      const { messages, selectedUser } = get();
+      debouncedMessageHandler(newMessage, messages, selectedUser);
     };
 
     // attach with named references so we can remove exactly these listeners later
     socket.on("newMessage", messageHandler);
-    socket.on("messageReactionAdded", reactionAddedHandler);
-    socket.on("messageReactionRemoved", reactionRemovedHandler);
 
     // store the handler references so unsubscribe can use them
     set({ 
       _private_messageHandler: messageHandler,
-      _private_reactionAddedHandler: reactionAddedHandler,
-      _private_reactionRemovedHandler: reactionRemovedHandler
+      _debouncedPrivateMessageHandler: debouncedMessageHandler
     });
   },
 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
     const { 
-      _private_messageHandler, 
-      _private_reactionAddedHandler, 
-      _private_reactionRemovedHandler 
+      _private_messageHandler,
+      _debouncedPrivateMessageHandler
     } = get();
     
     if (!socket) return;
@@ -253,25 +257,14 @@ export const useChatStore = create((set, get) => ({
       socket.off("newMessage", _private_messageHandler);
     }
     
-    if (_private_reactionAddedHandler) {
-      socket.off("messageReactionAdded", _private_reactionAddedHandler);
-    }
-    
-    if (_private_reactionRemovedHandler) {
-      socket.off("messageReactionRemoved", _private_reactionRemovedHandler);
-    }
-    
     // fallback: remove all listeners if handlers are not set
-    if (!_private_messageHandler && !_private_reactionAddedHandler && !_private_reactionRemovedHandler) {
+    if (!_private_messageHandler) {
       socket.off("newMessage");
-      socket.off("messageReactionAdded");
-      socket.off("messageReactionRemoved");
     }
     
     set({ 
       _private_messageHandler: null,
-      _private_reactionAddedHandler: null,
-      _private_reactionRemovedHandler: null 
+      _debouncedPrivateMessageHandler: null
     });
   },
 
@@ -376,11 +369,41 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  // Enhanced getGroupMessages with reactions
   getGroupMessages: async (groupId) => {
     set({ isGroupMessagesLoading: true });
     try {
       const res = await axiosInstance.get(`/group-messages/${groupId}`);
-      set({ groupMessages: res.data });
+      
+      let messages = res.data;
+      
+      // Fetch reactions for all group messages in bulk
+      const messageIds = messages
+        .filter(msg => !msg._id.startsWith('temp-'))
+        .map(msg => msg._id);
+      
+      if (messageIds.length > 0) {
+        try {
+          const reactionsRes = await axiosInstance.post('/reactions/bulk', {
+            messageIds,
+            messageType: 'group'
+          });
+          
+          // Attach reactions to messages
+          messages = messages.map(msg => ({
+            ...msg,
+            reactions: reactionsRes.data.reactions[msg._id] || {}
+          }));
+        } catch (reactionError) {
+          console.error('Failed to load group reactions:', reactionError);
+          messages = messages.map(msg => ({
+            ...msg,
+            reactions: msg.reactions || {}
+          }));
+        }
+      }
+      
+      set({ groupMessages: messages });
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to load group messages");
     } finally {
@@ -462,10 +485,14 @@ export const useChatStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
+    // Subscribe to global reactions once
+    get().subscribeToReactions();
+
     // Join the group room on the socket server
     socket.emit("joinGroup", selectedGroup._id);
 
-    const groupHandler = (newMessage) => {
+    // Create debounced group message handler
+    const debouncedGroupMessageHandler = debounce((newMessage) => {
       if (newMessage.groupId !== selectedGroup._id) return;
 
       const currentMessages = get().groupMessages;
@@ -493,6 +520,11 @@ export const useChatStore = create((set, get) => ({
           }
         }
       }
+    }, 50); // 50ms debounce
+
+    const groupHandler = (newMessage) => {
+      const { groupMessages, selectedGroup } = get();
+      debouncedGroupMessageHandler(newMessage, groupMessages, selectedGroup);
     };
 
     const groupUpdatedHandler = (data) => {
@@ -528,6 +560,7 @@ export const useChatStore = create((set, get) => ({
         groupUpdatedHandler,
         removedFromGroupHandler,
       },
+      _debouncedGroupMessageHandler: debouncedGroupMessageHandler
     });
   },
 
@@ -702,23 +735,47 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
- // In useChatStore.js - update the getMessageReactions function
-getMessageReactions: async (messageId, messageType) => {
-  // Skip API call for optimistic messages
-  if (messageId.startsWith('temp-')) {
-    console.log('Skipping reaction fetch for optimistic message:', messageId);
-    return { success: true, reactions: {} };
-  }
+  // Optimized getMessageReactions
+  getMessageReactions: async (messageId, messageType) => {
+    // Skip API call for optimistic messages
+    if (messageId.startsWith('temp-')) {
+      console.log('Skipping reaction fetch for optimistic message:', messageId);
+      return { success: true, reactions: {} };
+    }
 
-  try {
-    const res = await axiosInstance.get(`/reactions/${messageId}/${messageType}`);
-    return { success: true, reactions: res.data.reactions };
-  } catch (error) {
-    const errorMessage = error.response?.data?.message || "Failed to get reactions";
-    console.error(errorMessage);
-    throw new Error(errorMessage);
-  }
-},
+    try {
+      const res = await axiosInstance.get(`/reactions/${messageId}/${messageType}`);
+      return { success: true, reactions: res.data.reactions };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Failed to get reactions";
+      console.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  },
+
+  // Optimized getMessageReactions - fetch in bulk
+  getBulkMessageReactions: async (messageIds, messageType) => {
+    // Filter out optimistic messages
+    const validMessageIds = messageIds.filter(id => !id.startsWith('temp-'));
+    
+    if (validMessageIds.length === 0) {
+      return { success: true, reactions: {} };
+    }
+
+    try {
+      // You'll need to create a bulk endpoint in your backend
+      const res = await axiosInstance.post('/reactions/bulk', {
+        messageIds: validMessageIds,
+        messageType
+      });
+      return { success: true, reactions: res.data.reactions };
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Failed to get bulk reactions:", error);
+      }
+      return { success: true, reactions: {} };
+    }
+  },
 
   removeReactionByMessageAndEmoji: async (messageId, emoji, messageType) => {
     try {
@@ -731,6 +788,134 @@ getMessageReactions: async (messageId, messageType) => {
       const errorMessage = error.response?.data?.message || "Failed to remove reaction";
       toast.error(errorMessage);
       throw new Error(errorMessage);
+    }
+  },
+
+  // Optimized socket handlers
+  subscribeToReactions: () => {
+    const socket = useAuthStore.getState().socket;
+    if (!socket) return;
+
+    // Single global reaction handler instead of per-message
+    const globalReactionHandler = (data) => {
+      const { messages, groupMessages } = get();
+      
+      get().batchReactionUpdate(data.messageId, () => {
+        if (data.messageType === "private") {
+          const updatedMessages = messages.map(msg => {
+            if (msg._id === data.messageId) {
+              const updatedReactions = { ...msg.reactions };
+              if (!updatedReactions[data.reaction.emoji]) {
+                updatedReactions[data.reaction.emoji] = [];
+              }
+              
+              const userExists = updatedReactions[data.reaction.emoji].some(
+                user => user._id === data.reaction.userId._id
+              );
+              
+              if (!userExists) {
+                updatedReactions[data.reaction.emoji].push(data.reaction.userId);
+              }
+              
+              return { ...msg, reactions: updatedReactions };
+            }
+            return msg;
+          });
+          set({ messages: updatedMessages });
+        } else {
+          const updatedGroupMessages = groupMessages.map(msg => {
+            if (msg._id === data.messageId) {
+              const updatedReactions = { ...msg.reactions };
+              if (!updatedReactions[data.reaction.emoji]) {
+                updatedReactions[data.reaction.emoji] = [];
+              }
+              
+              const userExists = updatedReactions[data.reaction.emoji].some(
+                user => user._id === data.reaction.userId._id
+              );
+              
+              if (!userExists) {
+                updatedReactions[data.reaction.emoji].push(data.reaction.userId);
+              }
+              
+              return { ...msg, reactions: updatedReactions };
+            }
+            return msg;
+          });
+          set({ groupMessages: updatedGroupMessages });
+        }
+      });
+    };
+
+    const globalReactionRemovedHandler = (data) => {
+      const { messages, groupMessages } = get();
+      
+      get().batchReactionUpdate(data.messageId, () => {
+        if (data.messageType === "private") {
+          const updatedMessages = messages.map(msg => {
+            if (msg._id === data.messageId) {
+              const updatedReactions = { ...msg.reactions };
+              
+              if (updatedReactions[data.emoji]) {
+                updatedReactions[data.emoji] = updatedReactions[data.emoji].filter(
+                  user => user._id !== data.userId
+                );
+                
+                if (updatedReactions[data.emoji].length === 0) {
+                  delete updatedReactions[data.emoji];
+                }
+              }
+              
+              return { ...msg, reactions: updatedReactions };
+            }
+            return msg;
+          });
+          set({ messages: updatedMessages });
+        } else {
+          const updatedGroupMessages = groupMessages.map(msg => {
+            if (msg._id === data.messageId) {
+              const updatedReactions = { ...msg.reactions };
+              
+              if (updatedReactions[data.emoji]) {
+                updatedReactions[data.emoji] = updatedReactions[data.emoji].filter(
+                  user => user._id !== data.userId
+                );
+                
+                if (updatedReactions[data.emoji].length === 0) {
+                  delete updatedReactions[data.emoji];
+                }
+              }
+              
+              return { ...msg, reactions: updatedReactions };
+            }
+            return msg;
+          });
+          set({ groupMessages: updatedGroupMessages });
+        }
+      });
+    };
+
+    socket.on("messageReactionAdded", globalReactionHandler);
+    socket.on("messageReactionRemoved", globalReactionRemovedHandler);
+
+    set({ 
+      _globalReactionHandler: globalReactionHandler,
+      _globalReactionRemovedHandler: globalReactionRemovedHandler
+    });
+  },
+
+  unsubscribeFromReactions: () => {
+    const socket = useAuthStore.getState().socket;
+    const { _globalReactionHandler, _globalReactionRemovedHandler } = get();
+    
+    if (!socket) return;
+    
+    if (_globalReactionHandler) {
+      socket.off("messageReactionAdded", _globalReactionHandler);
+    }
+    
+    if (_globalReactionRemovedHandler) {
+      socket.off("messageReactionRemoved", _globalReactionRemovedHandler);
     }
   },
 }));

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo, useCallback, useMemo } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import ChatHeader from "./ChatHeader";
@@ -7,8 +7,58 @@ import MessageInput from "./MessageInput";
 import MessagesLoadingSkeleton from "./MessagesLoadingSkeleton";
 import MessageReactions from "./MessageReactions";
 import { ArrowLeftIcon } from "lucide-react";
+import Logger from "../utils/logger";
 
-function ChatContainer() {
+// Memoized message bubble component with optimized props
+const MemoizedMessageBubble = memo(({ message, isOwnMessage, authUser }) => {
+  const messageTime = useMemo(() => {
+    return new Date(message.createdAt).toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, [message.createdAt]);
+
+  return (
+    <div
+      className={`chat ${isOwnMessage ? "chat-end" : "chat-start"} group`}
+    >
+      <div
+        className={`chat-bubble relative max-w-xs md:max-w-md ${
+          isOwnMessage
+            ? "bg-cyan-600 text-white"
+            : "bg-slate-800 text-slate-200"
+        }`}
+      >
+        {message.image && (
+          <img 
+            src={message.image} 
+            alt="Shared" 
+            className="rounded-lg max-w-full h-auto max-h-48 object-cover" 
+            loading="lazy"
+          />
+        )}
+        {message.text && (
+          <p className="mt-2 break-words text-sm md:text-base">{message.text}</p>
+        )}
+        
+        <MessageReactions 
+          messageId={message._id}
+          messageType="private"
+          currentReactions={message.reactions || {}}
+        />
+        
+        <p className="text-xs mt-1 opacity-75 flex items-center gap-1">
+          {messageTime}
+        </p>
+      </div>
+    </div>
+  );
+});
+
+MemoizedMessageBubble.displayName = 'MemoizedMessageBubble';
+
+// Main ChatContainer component
+const ChatContainer = memo(function ChatContainer() {
   const {
     selectedUser,
     getMessagesByUserId,
@@ -17,13 +67,17 @@ function ChatContainer() {
     subscribeToMessages,
     unsubscribeFromMessages,
     setSelectedUser,
+    setSelectedGroup,
+    subscribeToReactions,
+    unsubscribeFromReactions,
   } = useChatStore();
   const { authUser, onlineUsers } = useAuthStore();
   const messageEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const [isMobile, setIsMobile] = useState(false);
+  const prevMessagesLengthRef = useRef(0);
 
-  // Enhanced mobile detection
+  // Enhanced mobile detection with throttling
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
@@ -44,38 +98,98 @@ function ChatContainer() {
     };
   }, []);
 
+  // Optimized message fetching and subscription
   useEffect(() => {
     if (selectedUser && selectedUser._id) {
+      Logger.debug('Fetching messages for user:', selectedUser._id);
       getMessagesByUserId(selectedUser._id);
       subscribeToMessages();
+      subscribeToReactions();
     }
 
-    return () => unsubscribeFromMessages();
-  }, [selectedUser, getMessagesByUserId, subscribeToMessages, unsubscribeFromMessages]);
+    return () => {
+      Logger.debug('Cleaning up subscriptions');
+      unsubscribeFromMessages();
+      unsubscribeFromReactions();
+    };
+  }, [
+    selectedUser, 
+    getMessagesByUserId, 
+    subscribeToMessages, 
+    unsubscribeFromMessages,
+    subscribeToReactions,
+    unsubscribeFromReactions
+  ]);
 
+  // Optimized scroll behavior with conditional auto-scroll
   useEffect(() => {
     if (messageEndRef.current && messages.length > 0) {
-      messageEndRef.current.scrollIntoView({ 
-        behavior: "smooth",
-        block: "nearest"
-      });
-    }
-  }, [messages]);
+      const isUserNearBottom = () => {
+        const container = messagesContainerRef.current;
+        if (!container) return true;
+        
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+        const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+        
+        // Auto-scroll only if user is within 200px of bottom or new message is from them
+        return distanceFromBottom < 200 || 
+               messages[messages.length - 1]?.senderId === authUser._id ||
+               messages.length !== prevMessagesLengthRef.current;
+      };
 
-  const handleBackClick = () => {
+      if (isUserNearBottom()) {
+        messageEndRef.current.scrollIntoView({ 
+          behavior: messages.length !== prevMessagesLengthRef.current ? "smooth" : "auto",
+          block: "nearest"
+        });
+      }
+      
+      prevMessagesLengthRef.current = messages.length;
+    }
+  }, [messages, authUser._id]);
+
+  const handleBackClick = useCallback(() => {
+    Logger.debug('Back button clicked, clearing selected user/group');
     setSelectedUser(null);
-  };
+    setSelectedGroup(null);
+  }, [setSelectedUser, setSelectedGroup]);
+
+  // Memoize message rendering for better performance
+  const renderMessage = useCallback((msg) => {
+    const isOwnMessage = msg.senderId === authUser._id;
+    return (
+      <MemoizedMessageBubble
+        key={msg._id}
+        message={msg}
+        isOwnMessage={isOwnMessage}
+        authUser={authUser}
+      />
+    );
+  }, [authUser]);
+
+  // Memoize messages array to prevent unnecessary re-renders
+  const memoizedMessages = useMemo(() => messages, [messages]);
+
+  // Memoize user online status
+  const isUserOnline = useMemo(() => 
+    onlineUsers.includes(selectedUser?._id), 
+    [onlineUsers, selectedUser?._id]
+  );
 
   // Guard clause to prevent rendering when no user is selected
   if (!selectedUser) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-slate-400">No user selected</p>
+          <p className="text-slate-400">Select a chat to start messaging</p>
         </div>
       </div>
     );
   }
+
+  Logger.debug('ChatContainer rendering with', memoizedMessages.length, 'messages');
 
   return (
     <div className="flex flex-col h-full bg-slate-900">
@@ -93,12 +207,13 @@ function ChatContainer() {
               </button>
               
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className={`avatar ${onlineUsers.includes(selectedUser._id) ? "online" : "offline"}`}>
+                <div className={`avatar ${isUserOnline ? "online" : "offline"}`}>
                   <div className="size-10 rounded-full flex-shrink-0 border-2 border-slate-600">
                     <img 
                       src={selectedUser.profilePic || "/avatar.png"} 
                       alt={selectedUser.fullName}
                       className="object-cover w-full h-full"
+                      loading="eager"
                     />
                   </div>
                 </div>
@@ -108,7 +223,7 @@ function ChatContainer() {
                     {selectedUser.fullName}
                   </h3>
                   <p className="text-slate-400 text-xs truncate">
-                    {onlineUsers.includes(selectedUser._id) ? "Online" : "Offline"}
+                    {isUserOnline ? "Online" : "Offline"}
                   </p>
                 </div>
               </div>
@@ -133,44 +248,9 @@ function ChatContainer() {
             : 'px-4 md:px-6 py-4'
         }`}
       >
-        {messages.length > 0 && !isMessagesLoading ? (
+        {memoizedMessages.length > 0 && !isMessagesLoading ? (
           <div className={`space-y-3 md:space-y-4 ${!isMobile ? 'max-w-3xl mx-auto' : ''}`}>
-            {messages.map((msg) => (
-              <div
-                key={msg._id}
-                className={`chat ${msg.senderId === authUser._id ? "chat-end" : "chat-start"} group`}
-              >
-                <div
-                  className={`chat-bubble relative max-w-xs md:max-w-md ${
-                    msg.senderId === authUser._id
-                      ? "bg-cyan-600 text-white"
-                      : "bg-slate-800 text-slate-200"
-                  }`}
-                >
-                  {msg.image && (
-                    <img 
-                      src={msg.image} 
-                      alt="Shared" 
-                      className="rounded-lg max-w-full h-auto max-h-48 object-cover" 
-                    />
-                  )}
-                  {msg.text && <p className="mt-2 break-words text-sm md:text-base">{msg.text}</p>}
-                  
-                  <MessageReactions 
-                    messageId={msg._id}
-                    messageType="private"
-                    currentReactions={msg.reactions || {}}
-                  />
-                  
-                  <p className="text-xs mt-1 opacity-75 flex items-center gap-1">
-                    {new Date(msg.createdAt).toLocaleTimeString(undefined, {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
-              </div>
-            ))}
+            {memoizedMessages.map(renderMessage)}
             <div ref={messageEndRef} />
           </div>
         ) : isMessagesLoading ? (
@@ -188,6 +268,8 @@ function ChatContainer() {
       </div>
     </div>
   );
-}
+});
+
+ChatContainer.displayName = 'ChatContainer';
 
 export default ChatContainer;

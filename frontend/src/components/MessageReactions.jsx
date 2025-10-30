@@ -1,118 +1,59 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { SmileIcon, LoaderIcon } from "lucide-react";
+import Logger from "../utils/logger";
 
 const EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🔥", "👏"];
 
-function MessageReactions({ messageId, messageType, currentReactions = {} }) {
+const MessageReactions = memo(({ messageId, messageType, currentReactions = {} }) => {
   const [showPicker, setShowPicker] = useState(false);
   const [reactions, setReactions] = useState(currentReactions);
   const [isLoading, setIsLoading] = useState(false);
   const { addReaction, removeReactionByMessageAndEmoji, getMessageReactions } = useChatStore();
-  const { authUser, socket } = useAuthStore();
+  const { authUser } = useAuthStore();
 
-  // Initialize with current reactions and fetch latest
+  // Load reactions when component mounts or messageId changes
   useEffect(() => {
-    setReactions(currentReactions);
-    
-    const fetchReactions = async () => {
+    const loadReactions = async () => {
+      if (!messageId || messageId.startsWith('temp-')) return;
+      
       try {
         const result = await getMessageReactions(messageId, messageType);
-        if (result.success) {
+        if (result.success && result.reactions) {
           setReactions(result.reactions);
         }
       } catch (error) {
-        console.error("Failed to fetch reactions:", error);
+        Logger.error("Failed to load reactions:", error);
       }
     };
 
-    fetchReactions();
+    loadReactions();
   }, [messageId, messageType, getMessageReactions]);
 
-  // Enhanced socket listener for real-time updates - FIXED VERSION
+  // Update when currentReactions prop changes (from socket events)
   useEffect(() => {
-    if (!socket) return;
-
-    console.log(`Setting up reaction listeners for ${messageType} message: ${messageId}`);
-
-    const handleReactionAdded = (data) => {
-      console.log("Reaction added event received:", data);
-      // Check if this event is for our message and type
-      if (data.messageId === messageId && data.messageType === messageType) {
-        setReactions(prev => {
-          const newReactions = { ...prev };
-          const emoji = data.reaction.emoji;
-          
-          if (!newReactions[emoji]) {
-            newReactions[emoji] = [];
-          }
-          
-          // Check if user already in the list to avoid duplicates
-          const userExists = newReactions[emoji].some(
-            user => user._id === data.reaction.userId._id
-          );
-          
-          if (!userExists) {
-            newReactions[emoji].push(data.reaction.userId);
-          }
-          
-          return newReactions;
-        });
-      }
-    };
-
-    const handleReactionRemoved = (data) => {
-      console.log("Reaction removed event received:", data);
-      if (data.messageId === messageId && data.messageType === messageType) {
-        setReactions(prev => {
-          const newReactions = { ...prev };
-          
-          if (newReactions[data.emoji]) {
-            newReactions[data.emoji] = newReactions[data.emoji].filter(
-              user => user._id !== data.userId
-            );
-            
-            // Remove emoji if no users left
-            if (newReactions[data.emoji].length === 0) {
-              delete newReactions[data.emoji];
-            }
-          }
-          
-          return newReactions;
-        });
-      }
-    };
-
-    socket.on("messageReactionAdded", handleReactionAdded);
-    socket.on("messageReactionRemoved", handleReactionRemoved);
-
-    return () => {
-      socket.off("messageReactionAdded", handleReactionAdded);
-      socket.off("messageReactionRemoved", handleReactionRemoved);
-      console.log(`Cleaned up reaction listeners for ${messageType} message: ${messageId}`);
-    };
-  }, [socket, messageId, messageType]);
+    setReactions(currentReactions);
+  }, [currentReactions]);
 
   const handleReactionClick = async (emoji) => {
     if (isLoading) return;
     
     setIsLoading(true);
     try {
-      // Check if user already reacted with this emoji
       const userReaction = reactions[emoji]?.some(user => user._id === authUser._id);
 
       if (userReaction) {
-        // Remove reaction
         await removeReactionByMessageAndEmoji(messageId, emoji, messageType);
+        // Socket event will update the reactions
       } else {
-        // Add reaction
         await addReaction(messageId, emoji, messageType);
+        // Socket event will update the reactions
       }
       
       setShowPicker(false);
     } catch (error) {
-      console.error("Failed to handle reaction:", error);
+      Logger.error("Failed to handle reaction:", error);
     } finally {
       setIsLoading(false);
     }
@@ -136,7 +77,7 @@ function MessageReactions({ messageId, messageType, currentReactions = {} }) {
                 hasUserReacted(emoji)
                   ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-400"
                   : "bg-slate-700/50 border-slate-600/50 text-slate-400 hover:bg-slate-600/50"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              } disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation`}
             >
               <span>{emoji}</span>
               <span className="min-w-[8px] text-center">{users.length}</span>
@@ -150,7 +91,7 @@ function MessageReactions({ messageId, messageType, currentReactions = {} }) {
         <button
           onClick={() => setShowPicker(!showPicker)}
           disabled={isLoading}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-slate-400 hover:text-slate-200 rounded disabled:opacity-50"
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-slate-400 hover:text-slate-200 rounded disabled:opacity-50 touch-manipulation"
         >
           {isLoading ? (
             <LoaderIcon className="w-4 h-4 animate-spin" />
@@ -161,7 +102,6 @@ function MessageReactions({ messageId, messageType, currentReactions = {} }) {
 
         {showPicker && (
           <>
-            {/* Backdrop to close picker when clicking outside */}
             <div 
               className="fixed inset-0 z-40" 
               onClick={() => setShowPicker(false)}
@@ -174,7 +114,7 @@ function MessageReactions({ messageId, messageType, currentReactions = {} }) {
                     key={emoji}
                     onClick={() => handleReactionClick(emoji)}
                     disabled={isLoading}
-                    className="p-2 hover:bg-slate-700 rounded transition-colors text-lg disabled:opacity-50"
+                    className="p-2 hover:bg-slate-700 rounded transition-colors text-lg disabled:opacity-50 touch-manipulation"
                   >
                     {emoji}
                   </button>
@@ -186,6 +126,8 @@ function MessageReactions({ messageId, messageType, currentReactions = {} }) {
       </div>
     </div>
   );
-}
+});
+
+MessageReactions.displayName = 'MessageReactions';
 
 export default MessageReactions;
