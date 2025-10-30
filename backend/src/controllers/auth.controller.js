@@ -176,7 +176,7 @@ export const signup = async (req, res) => {
         message: "Invalid data provided. Please check your input." 
       });
     }
-    
+     
     if (error.code === 11000) {
       return res.status(400).json({ 
         message: "Email already exists. Please use a different email." 
