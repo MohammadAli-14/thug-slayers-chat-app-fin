@@ -6,16 +6,22 @@ import {
   updateProfile, 
   verifyOTP, 
   resendOTP,
-  forgotPassword,       // ADD
-  verifyResetOTP,       // ADD
-  resetPassword         // ADD
+  forgotPassword,       
+  verifyResetOTP,       
+  resetPassword         
 } from '../controllers/auth.controller.js';
 import { protectRoute } from '../middleware/auth.middleware.js';
 import { arcjetProtection } from '../middleware/arcjet.middleware.js';
+import { simpleRateLimit } from '../middleware/rateLimit.middleware.js'; // ADD THIS
 
 const router = express.Router();
 
-router.use(arcjetProtection);
+// Use Arcjet if available, otherwise use simple rate limit
+if (process.env.ARCJET_KEY && process.env.ARCJET_KEY !== "your_arcjet_key_here") {
+  router.use(arcjetProtection);
+} else {
+  router.use(simpleRateLimit);
+}
 
 router.post("/signup", signup);
 router.post("/login", login);

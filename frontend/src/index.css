@@ -8,6 +8,20 @@
   syntax: "<angle>";
 }
 
+/* Improved mobile height handling */
+@supports (height: 100dvh) {
+  .h-mobile-screen {
+    height: 100dvh;
+  }
+}
+
+@supports not (height: 100dvh) {
+  .h-mobile-screen {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+}
+
 .input {
   @apply w-full bg-slate-800/50 border border-slate-700 rounded-lg py-2 pl-10 pr-4 text-slate-200 placeholder-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent;
 }
@@ -33,7 +47,8 @@
   @apply px-4 py-2 inline-block bg-cyan-500/10 rounded-lg text-cyan-400
   hover:text-cyan-500 text-sm transition-colors;
 }
-/* Safe area insets for mobile devices */
+
+/* Enhanced safe area handling */
 .safe-area {
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
@@ -41,17 +56,54 @@
   padding-right: env(safe-area-inset-right);
 }
 
+/* Mobile-specific safe area for chat containers */
+.chat-safe-area {
+  padding-top: max(env(safe-area-inset-top), 0.5rem);
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+
 /* Better scrolling on mobile */
-.overflow-y-auto {
+.mobile-scroll {
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* Prevent zoom on input focus for mobile */
 @media (max-width: 768px) {
-  input, textarea {
+  input, textarea, select {
     font-size: 16px; /* Prevents zoom on iOS */
   }
+  
+  /* Improved touch targets */
+  button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
+
+/* Enhanced scrollbar styling */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
 /* OTP Input Styles */
 .otp-input {
   @apply w-16 h-16 text-center text-2xl font-bold bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-200;
@@ -94,4 +146,271 @@
 .input:focus {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Mobile-specific chat container fixes */
+@media (max-width: 768px) {
+  .chat-container-mobile {
+    height: 100%;
+    min-height: -webkit-fill-available;
+  }
+  
+  .messages-container-mobile {
+    flex: 1 1 0%;
+    min-height: 0; /* Crucial for flex scrolling on mobile */
+  }
+}
+/* Add to your existing index.css */
+
+/* Gradient animation for text */
+@keyframes gradient-x {
+  0%, 100% {
+    background-size: 200% 200%;
+    background-position: left center;
+  }
+  50% {
+    background-size: 200% 200%;
+    background-position: right center;
+  }
+}
+
+.animate-gradient-x {
+  animation: gradient-x 3s ease infinite;
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Guild glow animation */
+@keyframes guild-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.6);
+  }
+}
+
+.animate-guild-glow {
+  animation: guild-glow 2s ease-in-out infinite;
+}
+
+/* Enhanced safe area for mobile */
+.h-mobile-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Smooth transitions for all interactive elements */
+* {
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.5);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 158, 11, 0.7);
+}
+/* Add to your existing index.css */
+
+/* Enhanced mobile safe areas */
+@supports (height: 100dvh) {
+  .min-h-mobile-screen {
+    min-height: 100dvh;
+  }
+}
+
+@supports not (height: 100dvh) {
+  .min-h-mobile-screen {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Gradient animation for text */
+@keyframes gradient-x {
+  0%, 100% {
+    background-size: 200% 200%;
+    background-position: left center;
+  }
+  50% {
+    background-size: 200% 200%;
+    background-position: right center;
+  }
+}
+
+.animate-gradient-x {
+  animation: gradient-x 3s ease infinite;
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Enhanced responsive text */
+@media (max-width: 640px) {
+  .text-responsive {
+    font-size: clamp(1rem, 4vw, 1.5rem);
+  }
+}
+
+/* Better touch targets for mobile */
+@media (max-width: 768px) {
+  button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  input, textarea, select {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+/* Enhanced mobile safe areas */
+@supports (padding: max(0px)) {
+  .chat-safe-area {
+    padding-top: max(env(safe-area-inset-top), 1rem);
+    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+    padding-left: max(env(safe-area-inset-left), 1rem);
+    padding-right: max(env(safe-area-inset-right), 1rem);
+  }
+}
+
+/* Better mobile scrolling */
+.messages-container-mobile {
+  flex: 1 1 0%;
+  min-height: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Enhanced touch targets */
+@media (max-width: 768px) {
+  button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .chat-bubble {
+    max-width: 85vw !important;
+  }
+}
+
+/* Smooth animations for mobile */
+@media (prefers-reduced-motion: no-preference) {
+  .mobile-transition {
+    transition: all 0.3s ease-in-out;
+  }
+}
+/* Enhanced mobile safe areas and chat containers */
+@supports (padding: max(0px)) {
+  .chat-safe-area {
+    padding-top: max(env(safe-area-inset-top), 0.5rem);
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+    padding-left: max(env(safe-area-inset-left), 1rem);
+    padding-right: max(env(safe-area-inset-right), 1rem);
+  }
+}
+
+/* Better mobile scrolling */
+.messages-container-mobile {
+  flex: 1 1 0%;
+  min-height: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Enhanced touch targets */
+@media (max-width: 768px) {
+  button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .chat-bubble {
+    max-width: 85vw !important;
+  }
+  
+  /* Improved mobile chat layout */
+  .chat-container-mobile {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    background: #0f172a;
+  }
+}
+
+/* Smooth animations for mobile */
+@media (prefers-reduced-motion: no-preference) {
+  .mobile-transition {
+    transition: all 0.3s ease-in-out;
+  }
+}
+
+/* Enhanced mobile message input */
+@media (max-width: 768px) {
+  .message-input-mobile {
+    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+  }
 }

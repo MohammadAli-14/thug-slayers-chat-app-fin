@@ -2,7 +2,14 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useAuthStore } from "../store/useAuthStore";
 import BorderAnimatedContainer from "../components/BorderAnimatedContainer";
-import { MessageCircleIcon, MailIcon, LoaderIcon, ShieldIcon, RotateCcwIcon } from "lucide-react";
+import { motion } from "framer-motion";
+import { 
+  LoaderIcon, 
+  ShieldIcon, 
+  RotateCcwIcon,
+  SwordIcon,
+  MailIcon
+} from "lucide-react";
 
 function OTPVerificationPage() {
   const [otp, setOtp] = useState(["", "", "", "", ""]);
@@ -95,23 +102,44 @@ function OTPVerificationPage() {
   }
 
   return (
-    <div className="w-full flex items-center justify-center p-4 bg-slate-900">
-      <div className="relative w-full max-w-6xl md:h-[800px] h-[650px]">
+    <div className="w-full flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-800/30 to-slate-900 min-h-mobile-screen safe-area">
+      <div className="relative w-full max-w-6xl md:h-[800px] h-full">
         <BorderAnimatedContainer>
-          <div className="w-full flex flex-col md:flex-row">
+          <div className="w-full flex flex-col md:flex-row h-full">
             {/* FORM COLUMN - LEFT SIDE */}
-            <div className="md:w-1/2 p-8 flex items-center justify-center md:border-r border-slate-600/30">
+            <div className="md:w-1/2 p-6 sm:p-8 flex items-center justify-center md:border-r border-amber-500/30">
               <div className="w-full max-w-md">
-                {/* HEADING TEXT */}
-                <div className="text-center mb-8">
-                  <ShieldIcon className="w-12 h-12 mx-auto text-cyan-400 mb-4" />
-                  <h2 className="text-2xl font-bold text-slate-200 mb-2">Verify Your Email</h2>
-                  <p className="text-slate-400">Enter the 5-digit code sent to</p>
-                  <p className="text-cyan-400 font-medium mt-1">{email}</p>
+                {/* GUILD BRANDING */}
+                <div className="text-center mb-6 sm:mb-8">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 200 }}
+                    className="animate-float mb-4"
+                  >
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center">
+                      <img 
+                        src="/thug-slayers-badge.png" 
+                        alt="Thug Slayers Badge"
+                        className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'block';
+                        }}
+                      />
+                      <SwordIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white hidden" />
+                    </div>
+                  </motion.div>
+                  
+                  <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent mb-2">
+                    VERIFY YOUR EMAIL
+                  </h2>
+                  <p className="text-slate-400 text-sm sm:text-base">Enter the 5-digit code sent to</p>
+                  <p className="text-amber-400 font-medium mt-1 text-sm sm:text-base">{email}</p>
                 </div>
 
                 {/* OTP INPUTS */}
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   <div>
                     <label className="auth-input-label">Verification Code</label>
                     <div className="flex justify-between gap-3">
@@ -126,7 +154,7 @@ function OTPVerificationPage() {
                           value={digit}
                           onChange={(e) => handleOtpChange(index, e.target.value)}
                           onKeyDown={(e) => handleKeyDown(index, e)}
-                          className="w-16 h-16 text-center text-2xl font-bold bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                          className="w-12 h-12 sm:w-16 sm:h-16 text-center text-xl sm:text-2xl font-bold bg-slate-800/50 border border-amber-500/30 rounded-lg text-slate-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
                           autoFocus={index === 0}
                         />
                       ))}
@@ -137,7 +165,7 @@ function OTPVerificationPage() {
                   <div className="text-center space-y-4">
                     <div className="text-slate-400 text-sm">
                       {timer > 0 ? (
-                        <p>Code expires in <span className="text-cyan-400 font-mono">{formatTime(timer)}</span></p>
+                        <p>Code expires in <span className="text-amber-400 font-mono">{formatTime(timer)}</span></p>
                       ) : (
                         <p className="text-amber-400">Code has expired</p>
                       )}
@@ -147,7 +175,7 @@ function OTPVerificationPage() {
                       type="button"
                       onClick={handleResendOTP}
                       disabled={isResendingOTP || timer > 0}
-                      className="auth-link inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="auth-link inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-amber-400 hover:text-amber-300 bg-amber-500/10"
                     >
                       <RotateCcwIcon className="w-4 h-4" />
                       {isResendingOTP ? "Sending..." : "Resend Code"}
@@ -155,54 +183,110 @@ function OTPVerificationPage() {
                   </div>
 
                   {/* VERIFY BUTTON */}
-                  <button
-                    onClick={() => handleVerifyOTP()}
-                    disabled={isVerifyingOTP || otp.join("").length !== 5}
-                    className="auth-btn flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isVerifyingOTP ? (
-                      <>
-                        <LoaderIcon className="w-5 h-5 animate-spin" />
-                        Verifying...
-                      </>
-                    ) : (
-                      <>
-                        <ShieldIcon className="w-5 h-5" />
-                        Verify Account
-                      </>
-                    )}
-                  </button>
+                  <div className="bg-amber-500/10 rounded-lg p-1 border border-amber-500/20">
+                    <button
+                      onClick={() => handleVerifyOTP()}
+                      disabled={isVerifyingOTP || otp.join("").length !== 5}
+                      className="w-full bg-amber-500 text-white rounded-lg py-3 font-bold hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
+                    >
+                      {isVerifyingOTP ? (
+                        <>
+                          <LoaderIcon className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                          VERIFYING...
+                        </>
+                      ) : (
+                        <>
+                          <ShieldIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                          VERIFY ACCOUNT
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* BACK TO SIGNUP */}
                 <div className="mt-6 text-center">
                   <button
                     onClick={() => navigate("/signup")}
-                    className="auth-link"
+                    className="auth-link bg-amber-500/10 text-amber-400 hover:text-amber-300 text-sm"
                   >
-                    Wrong email? Go back
+                    ← Wrong email? Go back
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* FORM ILLUSTRATION - RIGHT SIDE */}
-            <div className="hidden md:w-1/2 md:flex items-center justify-center p-6 bg-gradient-to-bl from-slate-800/20 to-transparent">
-              <div>
-                <img
-                  src="/otp-verification.png" // You can use your existing images or create a new one
-                  alt="Email verification illustration"
-                  className="w-full h-auto object-contain"
-                />
-                <div className="mt-6 text-center">
-                  <h3 className="text-xl font-medium text-cyan-400">Secure Verification</h3>
-
-                  <div className="mt-4 flex justify-center gap-4">
-                    <span className="auth-badge">Secure</span>
-                    <span className="auth-badge">Encrypted</span>
-                    <span className="auth-badge">Private</span>
+            {/* GUILD ILLUSTRATION - RIGHT SIDE */}
+            <div className="hidden md:w-1/2 md:flex items-center justify-center p-6 bg-gradient-to-br from-slate-800/20 to-amber-500/10">
+              <div className="text-center max-w-md">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <img
+                    src="/guild-members-squad1.png"
+                    alt="Thug Slayers Verification"
+                    className="w-full h-48 sm:h-64 object-contain rounded-lg mb-6"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      const defaultContent = e.target.parentNode.querySelector('.default-content');
+                      if (defaultContent) defaultContent.style.display = 'block';
+                    }}
+                  />
+                  
+                  <div className="default-content" style={{display: 'none'}}>
+                    <div className="w-32 h-32 mx-auto bg-amber-500/20 rounded-full flex items-center justify-center mb-4">
+                      <ShieldIcon className="w-16 h-16 text-amber-400" />
+                    </div>
                   </div>
-                </div>
+                  
+                  <h3 className="text-xl sm:text-2xl font-bold text-amber-400 mb-4">
+                    Secure Verification
+                  </h3>
+                  
+                  <div className="space-y-3 text-left">
+                    <div className="flex items-start gap-3 p-3 bg-slate-800/30 rounded-lg">
+                      <div className="w-6 h-6 bg-amber-500/20 rounded-full flex items-center justify-center mt-1 flex-shrink-0">
+                        <span className="text-amber-400 text-sm">✓</span>
+                      </div>
+                      <div>
+                        <p className="text-amber-300 text-sm font-medium">Military-Grade Security</p>
+                        <p className="text-slate-400 text-xs">Your account is protected with elite security measures</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3 p-3 bg-slate-800/30 rounded-lg">
+                      <div className="w-6 h-6 bg-amber-500/20 rounded-full flex items-center justify-center mt-1 flex-shrink-0">
+                        <span className="text-amber-400 text-sm">✓</span>
+                      </div>
+                      <div>
+                        <p className="text-amber-300 text-sm font-medium">Instant Access</p>
+                        <p className="text-slate-400 text-xs">Get verified and join the community instantly</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3 p-3 bg-slate-800/30 rounded-lg">
+                      <div className="w-6 h-6 bg-amber-500/20 rounded-full flex items-center justify-center mt-1 flex-shrink-0">
+                        <span className="text-amber-400 text-sm">✓</span>
+                      </div>
+                      <div>
+                        <p className="text-amber-300 text-sm font-medium">Private & Secure</p>
+                        <p className="text-slate-400 text-xs">We never share your data with third parties</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3 p-3 bg-slate-800/30 rounded-lg">
+                      <div className="w-6 h-6 bg-amber-500/20 rounded-full flex items-center justify-center mt-1 flex-shrink-0">
+                        <span className="text-amber-400 text-sm">✓</span>
+                      </div>
+                      <div>
+                        <p className="text-amber-300 text-sm font-medium">Free Forever</p>
+                        <p className="text-slate-400 text-xs">No hidden costs or subscriptions</p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
               </div>
             </div>
           </div>
