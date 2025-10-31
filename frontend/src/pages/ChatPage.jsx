@@ -56,7 +56,7 @@ function ChatPage() {
   console.log('showSidebar:', showSidebar);
 
   return (
-    <div className={`w-full ${isMobile ? 'min-h-mobile-screen safe-area' : 'h-screen'} bg-gradient-to-br from-slate-900 via-slate-800/30 to-slate-900`}>
+    <div className={`w-full ${isMobile ? 'h-dynamic-screen safe-area' : 'h-screen'} bg-gradient-to-br from-slate-900 via-slate-800/30 to-slate-900`}>
       <div className={`relative w-full ${isMobile ? 'h-full' : 'h-full'} max-w-6xl mx-auto`}>
         <BorderAnimatedContainer>
           <div className="w-full h-full flex flex-col md:flex-row">

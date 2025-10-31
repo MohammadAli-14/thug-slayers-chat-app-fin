@@ -2,16 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+
 @property --border-angle {
   inherits: false;
   initial-value: 0deg;
   syntax: "<angle>";
 }
 
-/* Improved mobile height handling */
+/* Enhanced mobile height handling with dynamic viewport units */
 @supports (height: 100dvh) {
   .h-mobile-screen {
     height: 100dvh;
+  }
+  .min-h-dynamic-screen {
+    min-height: 100dvh;
   }
 }
 
@@ -20,8 +24,13 @@
     height: 100vh;
     height: -webkit-fill-available;
   }
+  .min-h-dynamic-screen {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
 }
 
+/* Input styles */
 .input {
   @apply w-full bg-slate-800/50 border border-slate-700 rounded-lg py-2 pl-10 pr-4 text-slate-200 placeholder-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent;
 }
@@ -62,20 +71,57 @@
   padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
 }
 
+/* Message input container with safe area */
+.message-input-container {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+  background-color: #0f172a;
+  position: sticky; /* Better than fixed for most cases */
+  bottom: 0;
+  width: 100%;
+  left: 0;
+  right: 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  backdrop-filter: blur(10px);
+}
+/* Alternative if sticky doesn't work well */
+.message-input-fixed {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+  background-color: #0f172a;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+
 /* Better scrolling on mobile */
 .mobile-scroll {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
 
-/* Prevent zoom on input focus for mobile */
+/* Enhanced font size handling to prevent zoom on mobile */
 @media (max-width: 768px) {
   input, textarea, select {
     font-size: 16px; /* Prevents zoom on iOS */
   }
   
+  /* Specific targeting for message input */
+  #message-input, 
+  .message-input,
+  .your-message-input-class {
+    font-size: 16px !important; /* Ensure it overrides other styles */
+  }
+  
   /* Improved touch targets */
   button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .touch-target {
     min-height: 44px;
     min-width: 44px;
   }
@@ -158,9 +204,30 @@
   .messages-container-mobile {
     flex: 1 1 0%;
     min-height: 0; /* Crucial for flex scrolling on mobile */
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .message-bubble-mobile {
+    max-width: 85vw;
+    word-wrap: break-word;
+  }
+  
+  /* Improved mobile chat layout */
+  .chat-container-mobile {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    background: #0f172a;
+  }
+  
+  /* Enhanced mobile message input */
+  .message-input-mobile {
+    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
   }
 }
-/* Add to your existing index.css */
 
 /* Gradient animation for text */
 @keyframes gradient-x {
@@ -206,10 +273,21 @@
   animation: guild-glow 2s ease-in-out infinite;
 }
 
-/* Enhanced safe area for mobile */
-.h-mobile-screen {
-  min-height: 100vh;
-  min-height: 100dvh;
+/* Enhanced safe area for mobile with max support */
+@supports (padding: max(0px)) {
+  .safe-area {
+    padding-top: max(env(safe-area-inset-top), 1rem);
+    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+    padding-left: max(env(safe-area-inset-left), 1rem);
+    padding-right: max(env(safe-area-inset-right), 1rem);
+  }
+  
+  .chat-safe-area {
+    padding-top: max(env(safe-area-inset-top), 0.5rem);
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+    padding-left: max(env(safe-area-inset-left), 1rem);
+    padding-right: max(env(safe-area-inset-right), 1rem);
+  }
 }
 
 /* Smooth transitions for all interactive elements */
@@ -234,51 +312,6 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(245, 158, 11, 0.7);
 }
-/* Add to your existing index.css */
-
-/* Enhanced mobile safe areas */
-@supports (height: 100dvh) {
-  .min-h-mobile-screen {
-    min-height: 100dvh;
-  }
-}
-
-@supports not (height: 100dvh) {
-  .min-h-mobile-screen {
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-  }
-}
-
-/* Gradient animation for text */
-@keyframes gradient-x {
-  0%, 100% {
-    background-size: 200% 200%;
-    background-position: left center;
-  }
-  50% {
-    background-size: 200% 200%;
-    background-position: right center;
-  }
-}
-
-.animate-gradient-x {
-  animation: gradient-x 3s ease infinite;
-}
-
-/* Floating animation */
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
 
 /* Enhanced responsive text */
 @media (max-width: 640px) {
@@ -287,55 +320,11 @@
   }
 }
 
-/* Better touch targets for mobile */
-@media (max-width: 768px) {
-  button, [role="button"] {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  
-  input, textarea, select {
-    font-size: 16px; /* Prevents zoom on iOS */
-  }
-}
-
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
 }
 
-/* Custom scrollbar */
-.scrollbar-thin {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
-}
-
-.scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
-  border-radius: 3px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
-}
-/* Enhanced mobile safe areas */
-@supports (padding: max(0px)) {
-  .chat-safe-area {
-    padding-top: max(env(safe-area-inset-top), 1rem);
-    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
-    padding-left: max(env(safe-area-inset-left), 1rem);
-    padding-right: max(env(safe-area-inset-right), 1rem);
-  }
-}
-
 /* Better mobile scrolling */
 .messages-container-mobile {
   flex: 1 1 0%;
@@ -343,84 +332,10 @@ html {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Enhanced touch targets */
-@media (max-width: 768px) {
-  button, [role="button"] {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  
-  .chat-bubble {
-    max-width: 85vw !important;
-  }
-}
-
 /* Smooth animations for mobile */
 @media (prefers-reduced-motion: no-preference) {
   .mobile-transition {
     transition: all 0.3s ease-in-out;
-  }
-}
-/* Enhanced mobile safe areas and chat containers */
-@supports (padding: max(0px)) {
-  .chat-safe-area {
-    padding-top: max(env(safe-area-inset-top), 0.5rem);
-    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
-    padding-left: max(env(safe-area-inset-left), 1rem);
-    padding-right: max(env(safe-area-inset-right), 1rem);
-  }
-}
-
-/* Better mobile scrolling */
-.messages-container-mobile {
-  flex: 1 1 0%;
-  min-height: 0;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* Enhanced touch targets */
-@media (max-width: 768px) {
-  button, [role="button"] {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  
-  .chat-bubble {
-    max-width: 85vw !important;
-  }
-  
-  /* Improved mobile chat layout */
-  .chat-container-mobile {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 40;
-    background: #0f172a;
-  }
-}
-
-/* Smooth animations for mobile */
-@media (prefers-reduced-motion: no-preference) {
-  .mobile-transition {
-    transition: all 0.3s ease-in-out;
-  }
-}
-
-/* Enhanced mobile message input */
-@media (max-width: 768px) {
-  .message-input-mobile {
-    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
-  }
-}
-/* Enhanced Mobile Safe Areas */
-@supports (padding: max(0px)) {
-  .safe-area {
-    padding-top: max(env(safe-area-inset-top), 1rem);
-    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
-    padding-left: max(env(safe-area-inset-left), 1rem);
-    padding-right: max(env(safe-area-inset-right), 1rem);
   }
 }
 
@@ -441,20 +356,61 @@ html {
   transform: translateX(100%);
 }
 
-/* Improved Touch Targets */
-@media (max-width: 768px) {
-  .touch-target {
-    min-height: 44px;
-    min-width: 44px;
+/* Additional responsive utilities */
+@media (min-width: 769px) {
+  .desktop-container {
+    max-width: 1024px;
+    margin: 0 auto;
   }
-  
-  .message-bubble-mobile {
-    max-width: 85vw;
-    word-wrap: break-word;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
   }
-  
-  /* Prevent zoom on input focus */
-  input, textarea {
-    font-size: 16px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .input {
+    border-width: 2px;
   }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+@layer utilities {
+  .min-h-dynamic-screen {
+    min-height: 100dvh;
+  }
+  .h-dynamic-screen {
+    height: 100dvh;
+  }
+}
+/* ✅ IPHONE-SPECIFIC FIXES */
+/* iPhone notch support */
+@supports (padding: max(0px)) {
+  .iphone-safe {
+    padding-left: max(env(safe-area-inset-left), 1rem);
+    padding-right: max(env(safe-area-inset-right), 1rem);
+  }
+}
+
+/* iPhone keyboard avoidance */
+@media (max-height: 700px) and (max-width: 768px) {
+  .keyboard-open {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Home indicator area protection */
+.avoid-home-indicator {
+  margin-bottom: env(safe-area-inset-bottom);
 }
