@@ -29,7 +29,7 @@ function LandingPage() {
   const [userRating, setUserRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [hasRated, setHasRated] = useState(false);
-  const [totalRatings, setTotalRatings] = useState(127);
+  const [totalRatings, setTotalRatings] = useState(30);
   const [averageRating, setAverageRating] = useState(4.8);
   const [isLogoLoaded, setIsLogoLoaded] = useState(false);
   const heroRef = useRef(null);
@@ -74,7 +74,7 @@ function LandingPage() {
   ];
 
   const stats = [
-    { number: "500+", label: "ACTIVE WARRIORS", icon: <SwordIcon className="w-4 h-4" /> },
+    { number: "50+", label: "ACTIVE WARRIORS", icon: <SwordIcon className="w-4 h-4" /> },
     { number: "100%", label: "SECURE", icon: <LockIcon className="w-4 h-4" /> },
     { number: "24/7", label: "OPERATIONAL", icon: <TargetIcon className="w-4 h-4" /> },
     { number: "∞", label: "FREE", icon: <TrophyIcon className="w-4 h-4" /> }
