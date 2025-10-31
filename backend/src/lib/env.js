@@ -15,6 +15,7 @@ export const ENV = {
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
   ARCJET_KEY: process.env.ARCJET_KEY,
   ARCJET_ENV: process.env.ARCJET_ENV,
+  SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
   
   // SMTP Configuration
   SMTP_HOST: process.env.SMTP_HOST,

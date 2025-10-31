@@ -1,26 +1,27 @@
-import transporter from "../lib/nodemailer.js";
+// emails/emailHandlers.js
+import transporter from '../lib/sendgrid.js'; // Import the new SendGrid transporter
 import { 
   createVerificationTemplate, 
   createWelcomeEmailTemplate,
-  createResetPasswordTemplate  // ADD THIS IMPORT
+  createResetPasswordTemplate
 } from "./emailTemplates.js";
 import { ENV } from "../lib/env.js";
 
 export const sendVerificationEmail = async (email, name, verificationCode) => {
   try {
     const mailOptions = {
-      from: `"${ENV.EMAIL_FROM_NAME}" <${ENV.EMAIL_FROM}>`,
+      from: `"${ENV.EMAIL_FROM_NAME}" <${ENV.EMAIL_FROM}>`, // Use your verified sender address
       to: email,
       subject: "Verify Your Account - Thug Slayers Messenger",
       html: createVerificationTemplate(verificationCode, name),
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log("Verification email sent successfully:", info.messageId);
+    console.log("Verification email sent via SendGrid:", info.messageId);
     return { success: true, messageId: info.messageId };
     
   } catch (error) {
-    console.error("Error sending verification email:", error);
+    console.error("Error sending email with SendGrid:", error);
     throw new Error("Failed to send verification email");
   }
 };
@@ -28,18 +29,18 @@ export const sendVerificationEmail = async (email, name, verificationCode) => {
 export const sendWelcomeEmail = async (email, name, clientURL) => {
   try {
     const mailOptions = {
-      from: `"${ENV.EMAIL_FROM_NAME}" <${ENV.EMAIL_FROM}>`,
+      from: `"${ENV.EMAIL_FROM_NAME}" <${ENV.EMAIL_FROM}>`, // Use your verified sender address
       to: email,
       subject: "Welcome to Thug Slayers Messenger!",
       html: createWelcomeEmailTemplate(name, clientURL),
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log("Welcome email sent successfully:", info.messageId);
+    console.log("Welcome email sent via SendGrid:", info.messageId);
     return { success: true, messageId: info.messageId };
     
   } catch (error) {
-    console.error("Error sending welcome email:", error);
+    console.error("Error sending email with SendGrid:", error);
     throw new Error("Failed to send welcome email");
   }
 };
@@ -47,18 +48,18 @@ export const sendWelcomeEmail = async (email, name, clientURL) => {
 export const sendResetPasswordEmail = async (email, name, resetOTP) => {
   try {
     const mailOptions = {
-      from: `"${ENV.EMAIL_FROM_NAME}" <${ENV.EMAIL_FROM}>`,
+      from: `"${ENV.EMAIL_FROM_NAME}" <${ENV.EMAIL_FROM}>`, // Use your verified sender address
       to: email,
       subject: "Reset Your Password - Thug Slayers Messenger",
-      html: createResetPasswordTemplate(resetOTP, name), // FIXED: Now using imported function
+      html: createResetPasswordTemplate(resetOTP, name),
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log("Reset password email sent successfully:", info.messageId);
+    console.log("Reset password email sent via SendGrid:", info.messageId);
     return { success: true, messageId: info.messageId };
     
   } catch (error) {
-    console.error("Error sending reset password email:", error);
+    console.error("Error sending email with SendGrid:", error);
     throw new Error("Failed to send reset password email");
   }
 };
